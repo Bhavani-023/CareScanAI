@@ -1,5 +1,8 @@
 # Care Scan AI
 
+![Project Screenshot](Screenshot 2026-06-02 093930.png).(Screenshot 2026-06-02 093958.png)
+
+
 AI-powered prescription scanner and medicine reminder system.
 
 ## Features
