@@ -60,16 +60,17 @@ def upload():
         return "No image received"
 
     # -------- OCR PROCESSING --------
+    # -------- OCR PROCESSING --------
     try:
         img = Image.open(image_path)
         img = img.convert("L")
         img = ImageEnhance.Contrast(img).enhance(2)
         img = img.filter(ImageFilter.SHARPEN)
-
         text = pytesseract.image_to_string(img, config="--oem 3 --psm 6")
-
+        
     except Exception as e:
-        return f"OCR Error: {str(e)}"
+        print("OCR ERROR:", e)
+        return f"OCR Error: {e}"
 
     # -------- Extract Medicines --------
     medicines = extract_medicines(text)
