@@ -116,3 +116,11 @@ def assign_time(medicine):
 
 if __name__ == "__main__":
     app.run(debug=True)
+
+@app.route("/debug")
+def debug():
+    import os
+    return {
+        "os_name": os.name,
+        "tesseract_cmd": str(pytesseract.pytesseract.tesseract_cmd)
+    }
