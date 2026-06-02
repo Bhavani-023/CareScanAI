@@ -6,7 +6,11 @@ import base64
 import uuid
 
 # Set Tesseract path (Check this path carefully)
-pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+import os
+import pytesseract
+
+if os.name == "nt":  # Windows only
+    pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 
 app = Flask(__name__)
 
