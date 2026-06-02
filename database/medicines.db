@@ -1,0 +1,13 @@
+import sqlite3
+
+def save_data(medicine, dosage, priority):
+    conn = sqlite3.connect("database/medicines.db")
+    cursor = conn.cursor()
+    cursor.execute(
+        "CREATE TABLE IF NOT EXISTS medicines (name TEXT, dosage TEXT, priority TEXT)"
+    )
+    cursor.execute(
+        "INSERT INTO medicines VALUES (?, ?, ?)", (medicine, dosage, priority)
+    )
+    conn.commit()
+    conn.close()

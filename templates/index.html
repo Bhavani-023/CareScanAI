@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Care Scan AI – Medicine Reminder</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <style>
+        *{
+            margin:0;
+            padding:0;
+            box-sizing:border-box;
+        }
+
+        body{
+            font-family: "Segoe UI", Arial, sans-serif;
+            background:#f5f7fa;
+            padding:40px 20px;
+        }
+
+        .container{
+            max-width:900px;
+            margin:auto;
+        }
+
+        .header{
+            text-align:center;
+            margin-bottom:30px;
+        }
+
+        .header h1{
+            font-size:28px;
+            font-weight:600;
+            color:#2c3e50;
+        }
+
+        .header p{
+            color:#7f8c8d;
+            font-size:14px;
+            margin-top:5px;
+        }
+
+        .card{
+            background:white;
+            border-radius:10px;
+            padding:25px;
+            margin-bottom:20px;
+            box-shadow:0 2px 8px rgba(0,0,0,0.08);
+        }
+
+        h3{
+            margin-bottom:15px;
+            color:#34495e;
+        }
+
+        input[type="file"]{
+            width:100%;
+            padding:10px;
+            border:1px solid #ccc;
+            border-radius:6px;
+            margin-bottom:15px;
+        }
+
+        button{
+            padding:8px 14px;
+            border-radius:6px;
+            border:none;
+            background:#2c3e50;
+            color:white;
+            cursor:pointer;
+            font-size:13px;
+        }
+
+        button:hover{
+            background:#1a252f;
+        }
+
+        video, img{
+            width:100%;
+            max-width:350px;
+            border-radius:8px;
+            margin-bottom:10px;
+            border:1px solid #ddd;
+        }
+
+        .medicine-box{
+            border:1px solid #e1e4e8;
+            padding:15px;
+            border-radius:6px;
+            margin-bottom:10px;
+            background:#fafafa;
+        }
+
+        .medicine-name{
+            font-weight:600;
+            color:#2c3e50;
+        }
+
+        .medicine-time{
+            color:#555;
+            font-size:14px;
+            margin-top:4px;
+            margin-bottom:8px;
+        }
+
+        .center{
+            text-align:center;
+            margin-top:20px;
+        }
+
+        #loading{
+            display:none;
+            margin-top:10px;
+            color:#e67e22;
+            font-weight:500;
+        }
+
+        .info-box{
+            background:#f8f9fb;
+            padding:12px;
+            border-radius:6px;
+            margin-bottom:15px;
+            font-size:14px;
+        }
+
+        @media(max-width:600px){
+            body{padding:20px;}
+            .header h1{font-size:22px;}
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+
+<div class="header">
+    <h1>Care Scan AI</h1>
+    <p>Prescription Scanner & Real-Time Medicine Reminder</p>
+</div>
+
+{% if not output %}
+
+<div class="card">
+    <h3>Upload Prescription</h3>
+    <form method="POST" action="/upload" enctype="multipart/form-data">
+        <input type="file" name="image" accept="image/*" required>
+        <button type="submit" onclick="showLoading()">Upload & Scan</button>
+    </form>
+    <p id="loading">Processing prescription...</p>
+</div>
+
+<div class="card">
+    <h3>Capture From Camera</h3>
+
+    <video id="video" autoplay playsinline></video>
+    <button type="button" onclick="capture()">Capture Photo</button>
+
+    <img id="preview" style="display:none;">
+
+    <form method="POST" action="/upload" enctype="multipart/form-data">
+        <input type="hidden" name="image_data" id="image_data">
+        <div class="center">
+            <button type="submit">Upload Captured Image</button>
+        </div>
+    </form>
+</div>
+
+{% endif %}
+
+{% if output %}
+<div class="card">
+    <h3>Medicine Schedule</h3>
+
+    <!-- Countdown Section -->
+    <div class="info-box">
+        <strong>Next Dose Countdown:</strong>
+        <div id="countdownTimer">Calculating...</div>
+    </div>
+
+    <!-- Compliance Section -->
+    <div class="info-box">
+        <strong>Today's Compliance:</strong>
+        <div id="complianceScore">0%</div>
+    </div>
+
+    {% for item in output %}
+    <div class="medicine-box">
+        <div class="medicine-name">{{ item.medicine }}</div>
+        <div class="medicine-time">⏰ {{ item.times | join(", ") }}</div>
+        <button onclick="markTaken(this)">Mark as Taken</button>
+    </div>
+    {% endfor %}
+
+    <div class="center">
+        <a href="/"><button>Scan Another Prescription</button></a>
+    </div>
+</div>
+{% endif %}
+
+</div>
+
+<script>
+
+let totalMedicines = 0;
+let takenMedicines = 0;
+
+// Compliance
+function updateCompliance(){
+    if(totalMedicines === 0) return;
+    const percentage = Math.round((takenMedicines / totalMedicines) * 100);
+    document.getElementById("complianceScore").innerText =
+        percentage + "% (" + takenMedicines + "/" + totalMedicines + ")";
+}
+
+function markTaken(button){
+    if(button.disabled) return;
+
+    button.innerText = "Taken ✓";
+    button.style.backgroundColor = "#28a745";
+    button.disabled = true;
+
+    takenMedicines++;
+    updateCompliance();
+}
+
+// Countdown
+function getNextDose(allTimes){
+    const now = new Date();
+    let nextDose = null;
+
+    allTimes.forEach(time => {
+        let [hourMinute, period] = time.split(" ");
+        let [hour, minute] = hourMinute.split(":");
+
+        hour = parseInt(hour);
+        minute = parseInt(minute);
+
+        if(period === "PM" && hour !== 12) hour += 12;
+        if(period === "AM" && hour === 12) hour = 0;
+
+        let doseTime = new Date();
+        doseTime.setHours(hour, minute, 0);
+
+        if(doseTime > now && (!nextDose || doseTime < nextDose)){
+            nextDose = doseTime;
+        }
+    });
+
+    return nextDose;
+}
+
+function startCountdown(allTimes){
+    setInterval(() => {
+
+        const nextDose = getNextDose(allTimes);
+
+        if(!nextDose){
+            document.getElementById("countdownTimer").innerText =
+                "No more doses today.";
+            return;
+        }
+
+        const now = new Date();
+        const diff = nextDose - now;
+
+        const hours = Math.floor(diff / (1000 * 60 * 60));
+        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+        document.getElementById("countdownTimer").innerText =
+            `Next Dose In: ${hours}h ${minutes}m ${seconds}s`;
+
+    }, 1000);
+}
+
+// Notifications
+function startReminder(times, medicineName){
+    setInterval(function(){
+        const now = new Date();
+        const currentTime = now.toLocaleTimeString('en-US',{
+            hour:'2-digit',
+            minute:'2-digit',
+            hour12:true
+        });
+
+        times.forEach(function(time){
+            if(currentTime === time){
+                if(Notification.permission === "granted"){
+                    new Notification("Medicine Reminder",{
+                        body:"Time to take " + medicineName
+                    });
+                }
+            }
+        });
+
+    },60000);
+}
+
+if("Notification" in window){
+    Notification.requestPermission();
+}
+
+window.onload = function(){
+    {% if output %}
+        totalMedicines = {{ output|length }};
+        updateCompliance();
+
+        let allTimes = [];
+
+        {% for item in output %}
+            startReminder({{ item.times | tojson }}, "{{ item.medicine }}");
+            allTimes = allTimes.concat({{ item.times | tojson }});
+        {% endfor %}
+
+        startCountdown(allTimes);
+    {% endif %}
+};
+
+// Camera
+const video = document.getElementById("video");
+
+if(video && navigator.mediaDevices){
+    navigator.mediaDevices.getUserMedia({video:true})
+        .then(function(stream){
+            video.srcObject = stream;
+        })
+        .catch(function(){
+            console.log("Camera not accessible");
+        });
+}
+
+function capture(){
+    if(!video) return;
+
+    const canvas = document.createElement("canvas");
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext("2d").drawImage(video,0,0);
+
+    const imageData = canvas.toDataURL("image/png");
+    document.getElementById("image_data").value = imageData;
+
+    const preview = document.getElementById("preview");
+    preview.src = imageData;
+    preview.style.display = "block";
+}
+
+function showLoading(){
+    document.getElementById("loading").style.display="block";
+}
+
+</script>
+
+</body>
+</html>
