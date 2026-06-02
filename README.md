@@ -1,62 +1,41 @@
 # Care Scan AI
 
-![Project Screenshot](Screenshot 2026-06-02 093930.png).(Screenshot 2026-06-02 093958.png)
-
-
-AI-powered prescription scanner and medicine reminder system.
+AI-powered Prescription Scanner and Medicine Reminder System.
 
 ## Features
 
 - Upload prescription image
 - Capture prescription using camera
-- OCR text extraction using Tesseract OCR
-- Automatic medicine detection
-- Medicine reminder scheduling
+- OCR text extraction
+- Medicine detection
+- Automated reminder schedule
 - Browser notifications
-- Mobile and desktop support
+- Responsive UI
+- Cloud deployment on Render
 
-## Technologies Used
+## Tech Stack
 
 - Python
 - Flask
+- OCR.Space API
 - HTML
 - CSS
 - JavaScript
-- Tesseract OCR
-- Pillow
+- Render
 
-## Project Structure
+## Screenshots
 
-CareScan-AI/
-│
-├── app.py
-├── requirements.txt
-├── templates/
-│ └── index.html
-├── uploads/
-└── README.md
+### Home Page
 
-## How to Run
+![Home Page](Screenshot 2026-06-02 093930.png)
 
-```bash
-pip install -r requirements.txt
-python app.py
-```
+### Medicine Detection
 
-Open:
+![Result](Screenshot 2026-06-02 093958.png)
 
-```text
-http://127.0.0.1:5000
-```
+## Live Demo
+https://carescanai.onrender.com
 
-## Future Enhancements
-
-- Real-time medicine notifications
-- Multi-language prescription support
-- Doctor dashboard
-- Medicine history tracking
-- Caregiver alerts
-
-## Author
+## Developed By
 
 Bhavani Salguti
