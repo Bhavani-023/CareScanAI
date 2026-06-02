@@ -1,27 +1,22 @@
 from flask import Flask, render_template, request
 import os
-import pytesseract
-from PIL import Image, ImageEnhance, ImageFilter
 import base64
 import uuid
-
-# Set Tesseract path (Check this path carefully)
-import os
-import pytesseract
-
-if os.name == "nt":  # Windows only
-    pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+import requests
 
 app = Flask(__name__)
 
-# Use absolute upload path (safer)
+# Upload folder setup
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-# Create uploads folder if not exists
+# Create uploads folder if it doesn't exist
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
+
+# OCR.Space API Key
+API_KEY = "K87552243988957"
 
 
 @app.route("/")
@@ -34,17 +29,18 @@ def upload():
 
     image_path = None
 
-    # -------- CASE 1: File Upload --------
+    # -------- File Upload --------
     if "image" in request.files and request.files["image"].filename != "":
         image = request.files["image"]
 
-        # Generate unique filename
         filename = str(uuid.uuid4()) + "_" + image.filename
         image_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+
         image.save(image_path)
 
-    # -------- CASE 2: Camera Capture --------
+    # -------- Camera Capture --------
     elif request.form.get("image_data"):
+
         image_data = request.form.get("image_data")
 
         image_data = image_data.split(",")[1]
@@ -59,44 +55,68 @@ def upload():
     else:
         return "No image received"
 
-    # -------- OCR PROCESSING --------
-    # -------- OCR PROCESSING --------
+    # -------- OCR Processing --------
     try:
-        img = Image.open(image_path)
-        img = img.convert("L")
-        img = ImageEnhance.Contrast(img).enhance(2)
-        img = img.filter(ImageFilter.SHARPEN)
-        text = pytesseract.image_to_string(img, config="--oem 3 --psm 6")
-        
+
+        with open(image_path, "rb") as f:
+
+            response = requests.post(
+                "https://api.ocr.space/parse/image",
+                files={"filename": f},
+                data={
+                    "apikey": API_KEY,
+                    "language": "eng"
+                }
+            )
+
+        result = response.json()
+
+        if result.get("IsErroredOnProcessing"):
+            return "OCR failed. Please try another image."
+
+        text = result["ParsedResults"][0]["ParsedText"]
+
     except Exception as e:
         print("OCR ERROR:", e)
         return f"OCR Error: {e}"
 
-    # -------- Extract Medicines --------
+    # -------- Medicine Extraction --------
     medicines = extract_medicines(text)
 
     output = []
+
     for med in medicines:
-        times = assign_time(med)
-        output.append({"medicine": med, "times": times})
+        output.append({
+            "medicine": med,
+            "times": assign_time(med)
+        })
 
     return render_template(
         "index.html",
         output=output,
-        success="Image processed successfully!"
+        success="Prescription scanned successfully!"
     )
 
 
-# --------- MEDICINE FILTER ----------
+# -------- Medicine Filter --------
 def extract_medicines(text):
+
     medicine_list = [
-        "Paracetamol", "Amoxicillin", "Ciprofloxacin",
-        "Azithromycin", "Ceftriaxone", "Amikacin",
-        "Meropenem", "Imipenem", "Nitrofurantoin",
-        "Metformin", "Ibuprofen"
+        "Paracetamol",
+        "Amoxicillin",
+        "Ciprofloxacin",
+        "Azithromycin",
+        "Ceftriaxone",
+        "Amikacin",
+        "Meropenem",
+        "Imipenem",
+        "Nitrofurantoin",
+        "Metformin",
+        "Ibuprofen"
     ]
 
     found = []
+
     for med in medicine_list:
         if med.lower() in text.lower():
             found.append(med)
@@ -104,23 +124,21 @@ def extract_medicines(text):
     return found
 
 
-# --------- REMINDER TIME LOGIC ----------
+# -------- Reminder Logic --------
 def assign_time(medicine):
-    critical = ["Ciprofloxacin", "Amikacin", "Ceftriaxone", "Meropenem"]
+
+    critical = [
+        "Ciprofloxacin",
+        "Amikacin",
+        "Ceftriaxone",
+        "Meropenem"
+    ]
 
     if medicine in critical:
         return ["08:00 AM", "02:00 PM", "08:00 PM"]
-    else:
-        return ["09:00 AM", "09:00 PM"]
+
+    return ["09:00 AM", "09:00 PM"]
 
 
 if __name__ == "__main__":
     app.run(debug=True)
-
-@app.route("/debug")
-def debug():
-    import os
-    return {
-        "os_name": os.name,
-        "tesseract_cmd": str(pytesseract.pytesseract.tesseract_cmd)
-    }
